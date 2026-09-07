@@ -1,0 +1,45 @@
+schema_version: 1
+required_run_evidence:
+  - source_sha256
+  - patch_sha256
+  - clean_tree
+  - compiler_chain_digest
+  - result_mode
+  - official_validation
+  - independent_oracle_or_crc
+  - frequency_and_temperature_telemetry
+public_delivery_series:
+  id: coremark-k3-x100
+  source_commit: b56889a7bd9d5624fbeff2a73ba69878e6a9c146
+  ordered_patch_ids:
+    - 0001-ports-add-linux-clang-port-for-spacemit-x100
+  series_sha256: a88570c9ee3085663cc8966bab28853c11c4a668fae1ddd935bc660e6804764d
+patches:
+  - id: 0001-ports-add-linux-clang-port-for-spacemit-x100
+    file: patches/0001-ports-add-linux-clang-port-for-spacemit-x100.patch
+    class: k3-native-upstream-port
+    applies_to: [k3-development]
+    forbidden_tracks: [rpi-native, k3-compatible]
+    source_url: https://github.com/eembc/coremark.git
+    source_base_commit: b56889a7bd9d5624fbeff2a73ba69878e6a9c146
+    source_base_sha256: 873d9a103b4480c6ae7949285cafb786f82e0d1f940ce7c31dccb2ab62eadb7a
+    source_base_kind: suite-lock-official-score
+    source_lane: official-score
+    source_digest_reference: sources.lock.yaml
+    checkout_command: git clone https://github.com/eembc/coremark.git && cd coremark && git checkout --detach b56889a7bd9d5624fbeff2a73ba69878e6a9c146
+    patch_sha256: 1ef3ac808aac18e43c3a8de5b60a9bace8ed1c90e4347f152ffcc2d58e493927
+    compiler_chain: k3-coremark-clang-23-x100=23.0.0~git20260713+a0df86d-1
+    result_mode: best-achievable
+    apply:
+      directory: clean-coremark-source-root
+      command: patch --batch --forward --fuzz=0 -p1
+      reverse_command: patch --batch --reverse --fuzz=0 -p1
+      opt_in: PORT_DIR=linux-spacemit-x100
+    validation:
+      official_unmodified_required: true
+      same_seeds_required: true
+      sessions: 3
+      samples_per_session: 30
+      crc_or_independent_oracle: required
+      status: accepted-local-replay-independent-review-pending
+    upstream_status: upstream-ready-not-submitted
