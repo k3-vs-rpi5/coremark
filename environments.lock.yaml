@@ -39,3 +39,38 @@ toolchains:
       installed_compiler: /opt/k3-coremark/llvm-a0df86d/bin/clang-23
       installed_compiler_sha256: 6f146e285beff9b1a4ed0b515d51ea953935e0b03669f52d77faea2992ed59a8
       installation_policy: exact-version-through-local-apt-repository
+  # Reviewed deviation for the K3 development best-achievable lane. The
+  # workspace-wide cross toolchain stays the SpacemiT GCC toolchain; the
+  # k3-compatible and rpi-native parity tracks keep their locked compilers, and
+  # a result produced here is labelled best-achievable and carries this
+  # identity. Clang 23 is the first compiler with the upstream SpacemiT X100
+  # scheduling model, which is worth about 6 % over GCC 15.2 on CoreMark.
+  k3_x100_clang_23_pgo:
+    lane: best-achievable-k3-development
+    justification: >-
+      Measured on the K3 Pico ITX: GCC 15.2 with -mtune=spacemit-x100 reaches
+      7.60 CoreMark/MHz, Clang 23 with -mcpu=spacemit-x100 reaches 8.12, and
+      Clang 23 with the board-generated LLVM profile reaches 8.60. The parity
+      difference is declared, never merged into a default-parity result.
+    host_package:
+      name: clang-23
+      package_version: 1:23.1.2~++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70
+      repository: https://apt.llvm.org/noble llvm-toolchain-noble-23 main
+      compiler: /usr/bin/clang-23
+      compiler_sha256: 17446adf0658fa412c98cbb304a9cad58a8a66faf78bac797836655a3ac0e6e4
+    target:
+      triple: riscv64-unknown-linux-gnu
+      sysroot: /root/k3vsrpi5/spacemit-toolchain-linux-glibc-x86_64-v1.2.2/sysroot
+      gcc_toolchain: /root/k3vsrpi5/spacemit-toolchain-linux-glibc-x86_64-v1.2.2
+      abi: lp64d
+      cpu_model: spacemit-x100
+    profile_runtime:
+      source: llvm-project compiler-rt/lib/profile
+      commit: 069ef0e7cb36
+      path: /usr/lib/llvm-23/lib/clang/23/lib/linux/libclang_rt.profile-riscv64.a
+      sha256: 979daeff172b683af92089638cf0d11dab11cc65fa4915ddd1b0de45752d7927
+      build_policy: apt clang ships no riscv64 profile runtime; build it from the matching commit
+    profile_data:
+      path: /root/k3vsrpi5/.local/coremark-work/clang23/coremark.profdata
+      sha256: 77dfeb561fe296978fb340dd92af13da7a031516e5b15b4b21c6c00668cf079d
+      training: three instrumented board runs at the preregistered parameters

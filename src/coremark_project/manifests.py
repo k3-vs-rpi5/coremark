@@ -7,10 +7,14 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
 import yaml
 
 from .delivery import ContractError
+
+if TYPE_CHECKING:
+    from .clang_pgo import ClangPgoLock
 
 LOCKED_SOURCE_COMMIT = "b56889a7bd9d5624fbeff2a73ba69878e6a9c146"
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
@@ -182,6 +186,49 @@ def load_toolchain_lock(path: Path = ENVIRONMENT_LOCK) -> ToolchainLock:
             raise ContractError(f"toolchain lock {field} mismatch")
     if not lock.compiler_path.is_absolute():
         raise ContractError("toolchain compiler path must be absolute")
+    return lock
+
+
+def load_clang_pgo_lock(path: Path = ENVIRONMENT_LOCK) -> ClangPgoLock:
+    """Load the reviewed Clang 23 + X100 + LLVM PGO lane lock."""
+    from .clang_pgo import ClangPgoLock
+
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        raise ContractError(f"cannot load clang PGO lock: {path}") from error
+    document = _mapping(document, "clang PGO document")
+    toolchains = _mapping(document.get("toolchains"), "toolchain locks")
+    lane = _mapping(toolchains.get("k3_x100_clang_23_pgo"), "Clang 23 PGO lane")
+    host = _mapping(lane.get("host_package"), "Clang 23 host package")
+    target = _mapping(lane.get("target"), "Clang 23 target")
+    runtime = _mapping(lane.get("profile_runtime"), "Clang 23 profile runtime")
+    profile = _mapping(lane.get("profile_data"), "Clang 23 profile data")
+
+    lock = ClangPgoLock(
+        package_version=str(host.get("package_version", "")),
+        compiler_path=Path(str(host.get("compiler", ""))),
+        compiler_sha256=str(host.get("compiler_sha256", "")),
+        triple=str(target.get("triple", "")),
+        sysroot=Path(str(target.get("sysroot", ""))),
+        gcc_toolchain=Path(str(target.get("gcc_toolchain", ""))),
+        abi=str(target.get("abi", "")),
+        cpu_model=str(target.get("cpu_model", "")),
+        profile_runtime_path=Path(str(runtime.get("path", ""))),
+        profile_runtime_sha256=str(runtime.get("sha256", "")),
+        profile_runtime_commit=str(runtime.get("commit", "")),
+        profile_data_path=Path(str(profile.get("path", ""))),
+        profile_data_sha256=str(profile.get("sha256", "")),
+    )
+    for name in ("package_version", "triple", "abi", "cpu_model", "profile_runtime_commit"):
+        if not getattr(lock, name):
+            raise ContractError(f"clang PGO lock {name} is required")
+    for name in ("compiler_sha256", "profile_runtime_sha256", "profile_data_sha256"):
+        if SHA256_RE.fullmatch(getattr(lock, name)) is None:
+            raise ContractError(f"clang PGO lock {name} must be a SHA256")
+    for name in ("compiler_path", "sysroot", "gcc_toolchain", "profile_runtime_path", "profile_data_path"):
+        if not getattr(lock, name).is_absolute():
+            raise ContractError(f"clang PGO lock {name} must be an absolute path")
     return lock
 
 

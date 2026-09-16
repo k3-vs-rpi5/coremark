@@ -52,6 +52,11 @@ SOURCE_SHA256 = {
     "core_util.c": "a3fbfcb9bb943b638624b8ece01c5836dd56a96d7bcde2697b248d077447327f",
     "coremark.h": "29f7eb0f0bdf6002f6c7dccfa4f8f9f32c0b8f6709f6538c2b73221938a9c8f1",
 }
+RUNTIME_POLICY = {
+    Track.RPI_NATIVE: {"frequency_mhz": 2400, "tolerance_mhz": 20, "governor": "performance"},
+    Track.K3_COMPATIBLE: {"frequency_mhz": 2200, "tolerance_mhz": 20, "governor": "userspace"},
+    Track.K3_DEVELOPMENT: {"frequency_mhz": 2200, "tolerance_mhz": 20, "governor": "userspace"},
+}
 
 
 def _require_path(value: Path | None, name: str) -> Path:
@@ -71,6 +76,25 @@ def _validate_track_architecture(track: Track) -> None:
         raise ContractError(
             f"{track} requires host architecture {expected}, found {actual}"
         )
+
+
+def _validate_runtime_policy(track: Track, cpu_set: str) -> None:
+    state, frequencies, _ = _platform_state(cpu_set)
+    policy = RUNTIME_POLICY[track]
+    expected_frequency = int(policy["frequency_mhz"])
+    tolerance = int(policy["tolerance_mhz"])
+    for cpu in _cpu_ids(cpu_set):
+        name = f"cpu{cpu}"
+        value = frequencies.get(name)
+        if value is None or abs(round(value / 1000) - expected_frequency) > tolerance:
+            raise ContractError(f"CPU frequency is not fixed at {expected_frequency} MHz")
+        governor = _single_match(
+            rf"^{name}_governor=(.+)$",
+            state,
+            f"{name} governor",
+        )
+        if governor != policy["governor"]:
+            raise ContractError(f"CPU governor is not {policy['governor']}")
 
 
 @dataclass(frozen=True)
@@ -127,6 +151,7 @@ def prepare_run_request(
         raise ContractError(
             f"runtime profile digest does not match environments.lock.yaml for {track}"
         )
+    _validate_runtime_policy(track, cpu_set)
     return RunRequest(
         work_root=work_root,
         evidence_root=evidence_root,
@@ -565,6 +590,7 @@ def describe_patch_series() -> str:
 def build_delivery(
     *,
     work_root: Path | None,
+    compiler_kind: str = "default",
     track: Track,
     result_mode: ResultMode,
     compiler: Path | None,
@@ -577,7 +603,22 @@ def build_delivery(
         reverse_patch_series,
     )
 
-    _validate_track_architecture(track)
+    if compiler_kind not in {"default", "clang23-pgo"}:
+        raise ContractError(f"unknown compiler kind: {compiler_kind}")
+    if compiler_kind == "clang23-pgo" and not (
+        track is Track.K3_DEVELOPMENT and result_mode is ResultMode.BEST_ACHIEVABLE
+    ):
+        raise ContractError(
+            "the clang23-pgo lane is limited to k3-development best-achievable"
+        )
+    if compiler_kind == "clang23-pgo":
+        # The locked lane is a cross build: the clang host package is x86_64 and
+        # the target is riscv64 with the SpacemiT sysroot, so the native
+        # host/target architecture equality gate does not apply.
+        if platform.machine() != "x86_64":
+            raise ContractError("the clang23-pgo lane requires an x86_64 host")
+    else:
+        _validate_track_architecture(track)
     if work_root is None:
         work_root = Path(tempfile.mkdtemp(prefix="coremark-build-"))
     work_root = _new_directory(work_root, "COREMARK_WORK_ROOT")
@@ -606,13 +647,18 @@ def build_delivery(
             result_mode is ResultMode.BEST_ACHIEVABLE
             and track is Track.K3_DEVELOPMENT
         ):
-            compiler_path = _ensure_x100_toolchain(
-                compiler,
-                compiler_artifact,
-                packages_index,
-                work_root,
-                evidence,
-            )
+            if compiler_kind == "clang23-pgo":
+                from .clang_pgo import prepare_compiler
+
+                compiler_path = prepare_compiler(work_root, evidence)
+            else:
+                compiler_path = _ensure_x100_toolchain(
+                    compiler,
+                    compiler_artifact,
+                    packages_index,
+                    work_root,
+                    evidence,
+                )
             patch_series = load_patch_series()
             apply_patch_series(source_root, patch_series)
             patch_applied = True
@@ -654,6 +700,7 @@ def build_delivery(
             "status": "completed",
             "track": str(track),
             "result_mode": str(result_mode),
+            "compiler_kind": compiler_kind,
             "source": {
                 "url": SOURCE_URL,
                 "commit": SOURCE_COMMIT,

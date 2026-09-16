@@ -42,6 +42,24 @@ K3 best-achievable 构建还要通过 `--compiler-artifact` 和 `--packages-inde
 提供锁定 APT 软件包与索引。两个脚本的完整参数可用 `--help` 查看。输出必须是
 本仓库外的新绝对路径；失败运行也会作为 checksum 封存的 invalid 证据保留。
 
+## K3 best-achievable 通道
+
+工作区的交叉工具链是 spacemit GCC 工具链，且各 parity 轨道保留各自锁定的编译器。
+`k3-development` 的 best-achievable 通道可以额外使用 `environments.lock.yaml`
+中记录的、经评审的 Clang 通道：
+
+```sh
+scripts/build.sh --work-root /absolute/new/build \
+  --track k3-development --result-mode best-achievable \
+  --compiler-kind clang23-pgo
+```
+
+该通道使用锁定的 Clang 23 主机软件包、spacemit sysroot、`-mcpu=spacemit-x100`
+以及板上生成的 LLVM profile 进行交叉编译。当编译器、riscv64 profile runtime 或
+profile 数据与其记录的 SHA256 不一致时直接失败关闭。在 K3 Pico ITX 上该通道实测
+约 8.6 CoreMark/MHz，而 GCC 通道约 7.6 CoreMark/MHz，因此该通道产出的结果标记
+为 best-achievable，绝不替换同参数的默认结果。
+
 ## 优化和补丁状态
 
 `patches/` 中接受的系列只新增可选的 X100 `core_portme.mak`，受 checksum 控制的

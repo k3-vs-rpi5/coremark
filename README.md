@@ -47,6 +47,27 @@ index with `--compiler-artifact` and `--packages-index`. Use `--help` on either
 script for the complete interface. Outputs must be new absolute paths outside
 this repository; failed runs are retained as checksum-sealed invalid evidence.
 
+## K3 best-achievable lane
+
+The workspace cross toolchain is the SpacemiT GCC toolchain, and the parity
+tracks keep their locked compilers. The `k3-development` best-achievable lane
+may additionally use the reviewed Clang lane recorded in
+`environments.lock.yaml`:
+
+```sh
+scripts/build.sh --work-root /absolute/new/build \
+  --track k3-development --result-mode best-achievable \
+  --compiler-kind clang23-pgo
+```
+
+That lane cross compiles with the locked Clang 23 host package, the SpacemiT
+sysroot, `-mcpu=spacemit-x100`, and a board-generated LLVM profile. It fails
+closed when the compiler, the riscv64 profile runtime, or the profile data does
+not match its recorded SHA256. Measured on the K3 Pico ITX the lane reaches
+about 8.6 CoreMark/MHz against about 7.6 CoreMark/MHz for the GCC lane, so a
+result produced here is labelled best-achievable and never replaces the
+equal-parameter default result.
+
 ## Optimization and patch status
 
 The accepted series in `patches/` adds only an opt-in X100 `core_portme.mak`;

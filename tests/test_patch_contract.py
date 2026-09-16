@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from coremark_project.manifests import (
     ContractError,
     apply_patch_series,
+    load_clang_pgo_lock,
     load_patch_series,
     load_toolchain_lock,
     reverse_patch_series,
@@ -15,6 +17,35 @@ from coremark_project.manifests import (
 
 PROJECT = Path(__file__).resolve().parents[1]
 MANIFEST = PROJECT / "patches/manifest.yaml"
+
+
+def test_clang_pgo_lane_identity_is_pinned() -> None:
+    lock = load_clang_pgo_lock()
+
+    assert lock.package_version == (
+        "1:23.1.2~++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70"
+    )
+    assert lock.compiler_sha256 == (
+        "17446adf0658fa412c98cbb304a9cad58a8a66faf78bac797836655a3ac0e6e4"
+    )
+    assert lock.triple == "riscv64-unknown-linux-gnu"
+    assert lock.abi == "lp64d"
+    assert lock.cpu_model == "spacemit-x100"
+    assert lock.profile_runtime_commit == "069ef0e7cb36"
+    assert lock.profile_runtime_sha256 == (
+        "979daeff172b683af92089638cf0d11dab11cc65fa4915ddd1b0de45752d7927"
+    )
+    assert lock.profile_data_sha256 == (
+        "77dfeb561fe296978fb340dd92af13da7a031516e5b15b4b21c6c00668cf079d"
+    )
+    for path in (
+        lock.compiler_path,
+        lock.sysroot,
+        lock.gcc_toolchain,
+        lock.profile_runtime_path,
+        lock.profile_data_path,
+    ):
+        assert path.is_absolute()
 
 
 def test_locked_patch_and_toolchain_identities_resolve_inside_project(

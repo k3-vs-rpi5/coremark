@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
+
+from coremark_project import delivery
 from coremark_project.delivery import (
     PROJECT_ROOT,
     ContractError,
@@ -62,6 +64,31 @@ def test_track_rejects_a_host_with_the_wrong_cpu_architecture(
             cpu_set="0",
             runtime_profile_digest=(
                 "981a9ce13ece47b1ba8a0504a7e7f4afb3b4bcaae720a45b40dd178ac11bd727"
+            ),
+        )
+
+
+def test_run_request_rejects_k3_frequency_below_locked_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platform, "machine", lambda: "riscv64")
+    monkeypatch.setattr(
+        delivery,
+        "_platform_state",
+        lambda cpu_set: ("", {"cpu0": 2_000_000}, {"thermal_zone0": 50_000}),
+    )
+
+    with pytest.raises(ContractError, match="CPU frequency is not fixed at 2200 MHz"):
+        prepare_run_request(
+            work_root=tmp_path / "build",
+            evidence_root=tmp_path / "evidence",
+            out_dir=tmp_path / "evidence/run",
+            track=Track.K3_DEVELOPMENT,
+            result_mode=ResultMode.DEFAULT_PARITY,
+            run_mode=RunMode.QUICK,
+            cpu_set="0",
+            runtime_profile_digest=(
+                "62218ec3b29f5a1f33397393826270287d2c5e0fc1b96854f05d8a13d9d32328"
             ),
         )
 
@@ -180,3 +207,29 @@ def test_compatible_track_executes_inside_the_locked_rootfs(
         "0x66",
         "0",
     ]
+
+
+def test_clang_pgo_lane_is_limited_to_k3_development_best_achievable(tmp_path: Path) -> None:
+    with pytest.raises(ContractError, match="clang23-pgo lane is limited"):
+        delivery.build_delivery(
+            work_root=tmp_path / "work",
+            compiler_kind="clang23-pgo",
+            track=Track.K3_COMPATIBLE,
+            result_mode=ResultMode.BEST_ACHIEVABLE,
+            compiler=None,
+            compiler_artifact=None,
+            packages_index=None,
+        )
+
+
+def test_unknown_compiler_kind_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ContractError, match="unknown compiler kind"):
+        delivery.build_delivery(
+            work_root=tmp_path / "work",
+            compiler_kind="vendor-magic",
+            track=Track.K3_DEVELOPMENT,
+            result_mode=ResultMode.BEST_ACHIEVABLE,
+            compiler=None,
+            compiler_artifact=None,
+            packages_index=None,
+        )

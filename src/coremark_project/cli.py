@@ -32,6 +32,12 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--compiler", type=Path)
     build.add_argument("--compiler-artifact", type=Path)
     build.add_argument("--packages-index", type=Path)
+    build.add_argument(
+        "--compiler-kind",
+        choices=("default", "clang23-pgo"),
+        default=None,
+        help="select the locked Clang 23 + X100 + LLVM PGO lane for K3",
+    )
     build.add_argument("--print-patch-series", action="store_true")
 
     run = commands.add_parser("run", help="run and seal official CoreMark samples")
@@ -67,6 +73,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             output = build_delivery(
                 work_root=_environment_path(args.work_root, "COREMARK_WORK_ROOT"),
+                compiler_kind=args.compiler_kind
+                or os.environ.get("COREMARK_COMPILER_KIND", "default"),
                 track=Track(args.track),
                 result_mode=ResultMode(args.result_mode),
                 compiler=_environment_path(args.compiler, "COREMARK_CC"),
