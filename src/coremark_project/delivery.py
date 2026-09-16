@@ -54,8 +54,8 @@ SOURCE_SHA256 = {
 }
 RUNTIME_POLICY = {
     Track.RPI_NATIVE: {"frequency_mhz": 2400, "tolerance_mhz": 20, "governor": "performance"},
-    Track.K3_COMPATIBLE: {"frequency_mhz": 2200, "tolerance_mhz": 20, "governor": "userspace"},
-    Track.K3_DEVELOPMENT: {"frequency_mhz": 2200, "tolerance_mhz": 20, "governor": "userspace"},
+    Track.K3_COMPATIBLE: {"frequency_mhz": 2000, "tolerance_mhz": 20, "governor": "userspace"},
+    Track.K3_DEVELOPMENT: {"frequency_mhz": 2000, "tolerance_mhz": 20, "governor": "userspace"},
 }
 
 
@@ -499,6 +499,7 @@ def _compile_mode(
     result_mode: ResultMode,
     mode: str,
     evidence: Path,
+    port_flags: str | None = None,
 ) -> None:
     macro = "-DPERFORMANCE_RUN=1" if mode == "performance" else "-DVALIDATION_RUN=1"
     optimization = "-O3" if result_mode is ResultMode.BEST_ACHIEVABLE else "-O2"
@@ -508,18 +509,18 @@ def _compile_mode(
         ["make", "-C", str(source_root), "clean"],
         log=evidence / f"{mode}-clean.log",
     )
-    _run_command(
-        [
-            "make",
-            "-C",
-            str(source_root),
-            f"PORT_DIR={port_dir}",
-            f"CC={compiler}",
-            f"XCFLAGS={flags}",
-            "compile",
-        ],
-        log=evidence / f"{mode}-build.log",
-    )
+    command = [
+        "make",
+        "-C",
+        str(source_root),
+        f"PORT_DIR={port_dir}",
+        f"CC={compiler}",
+        f"XCFLAGS={flags}",
+    ]
+    if port_flags:
+        command.append(f"PORT_CFLAGS={port_flags}")
+    command.append("compile")
+    _run_command(command, log=evidence / f"{mode}-build.log")
     binary = source_root / "coremark.exe"
     if not binary.is_file() or not os.access(binary, os.X_OK):
         raise ContractError(f"CoreMark {mode} build did not produce an executable")
@@ -629,6 +630,7 @@ def build_delivery(
     binaries.mkdir()
     patch_series = None
     patch_applied = False
+    lane_port_flags: str | None = None
 
     try:
         parser_identity = _python_yaml_identity()
@@ -648,9 +650,10 @@ def build_delivery(
             and track is Track.K3_DEVELOPMENT
         ):
             if compiler_kind == "clang23-pgo":
-                from .clang_pgo import prepare_compiler
+                from .clang_pgo import locked_port_flags, prepare_compiler
 
                 compiler_path = prepare_compiler(work_root, evidence)
+                lane_port_flags = locked_port_flags()
             else:
                 compiler_path = _ensure_x100_toolchain(
                     compiler,
@@ -685,6 +688,7 @@ def build_delivery(
                 result_mode,
                 mode,
                 evidence,
+                lane_port_flags,
             )
 
         _run_command(

@@ -207,6 +207,7 @@ def load_clang_pgo_lock(path: Path = ENVIRONMENT_LOCK) -> ClangPgoLock:
 
     lock = ClangPgoLock(
         package_version=str(host.get("package_version", "")),
+        version_token=str(host.get("version_token", "")),
         compiler_path=Path(str(host.get("compiler", ""))),
         compiler_sha256=str(host.get("compiler_sha256", "")),
         triple=str(target.get("triple", "")),
@@ -214,13 +215,22 @@ def load_clang_pgo_lock(path: Path = ENVIRONMENT_LOCK) -> ClangPgoLock:
         gcc_toolchain=Path(str(target.get("gcc_toolchain", ""))),
         abi=str(target.get("abi", "")),
         cpu_model=str(target.get("cpu_model", "")),
+        port_flags=str(lane.get("port_flags", "")),
         profile_runtime_path=Path(str(runtime.get("path", ""))),
         profile_runtime_sha256=str(runtime.get("sha256", "")),
         profile_runtime_commit=str(runtime.get("commit", "")),
         profile_data_path=Path(str(profile.get("path", ""))),
         profile_data_sha256=str(profile.get("sha256", "")),
     )
-    for name in ("package_version", "triple", "abi", "cpu_model", "profile_runtime_commit"):
+    for name in (
+        "package_version",
+        "version_token",
+        "triple",
+        "abi",
+        "cpu_model",
+        "port_flags",
+        "profile_runtime_commit",
+    ):
         if not getattr(lock, name):
             raise ContractError(f"clang PGO lock {name} is required")
     for name in ("compiler_sha256", "profile_runtime_sha256", "profile_data_sha256"):

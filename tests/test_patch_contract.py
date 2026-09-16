@@ -25,6 +25,9 @@ def test_clang_pgo_lane_identity_is_pinned() -> None:
     assert lock.package_version == (
         "1:23.1.2~++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70"
     )
+    assert lock.version_token == (
+        "23.1.2 (++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70)"
+    )
     assert lock.compiler_sha256 == (
         "17446adf0658fa412c98cbb304a9cad58a8a66faf78bac797836655a3ac0e6e4"
     )

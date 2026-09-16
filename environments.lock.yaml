@@ -55,6 +55,7 @@ toolchains:
     host_package:
       name: clang-23
       package_version: 1:23.1.2~++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70
+      version_token: 23.1.2 (++20260910044232+069ef0e7cb36-1~exp1~20260910044242.70)
       repository: https://apt.llvm.org/noble llvm-toolchain-noble-23 main
       compiler: /usr/bin/clang-23
       compiler_sha256: 17446adf0658fa412c98cbb304a9cad58a8a66faf78bac797836655a3ac0e6e4
@@ -64,6 +65,12 @@ toolchains:
       gcc_toolchain: /root/k3vsrpi5/spacemit-toolchain-linux-glibc-x86_64-v1.2.2
       abi: lp64d
       cpu_model: spacemit-x100
+    port_flags: -O3 -fno-common -funroll-loops -finline-functions
+    port_flags_note: >-
+      These flags reproduce the measured best-achievable build exactly; they
+      override the port defaults because the port also selects an explicit
+      vector-capable ISA string, which is 41 % slower for this workload on the
+      X100 scalar cores.
     profile_runtime:
       source: llvm-project compiler-rt/lib/profile
       commit: 069ef0e7cb36

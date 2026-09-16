@@ -75,10 +75,10 @@ def test_run_request_rejects_k3_frequency_below_locked_profile(
     monkeypatch.setattr(
         delivery,
         "_platform_state",
-        lambda cpu_set: ("", {"cpu0": 2_000_000}, {"thermal_zone0": 50_000}),
+        lambda cpu_set: ("", {"cpu0": 1_500_000}, {"thermal_zone0": 50_000}),
     )
 
-    with pytest.raises(ContractError, match="CPU frequency is not fixed at 2200 MHz"):
+    with pytest.raises(ContractError, match="CPU frequency is not fixed at 2000 MHz"):
         prepare_run_request(
             work_root=tmp_path / "build",
             evidence_root=tmp_path / "evidence",

@@ -20,6 +20,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class ClangPgoLock:
     package_version: str
+    version_token: str
     compiler_path: Path
     compiler_sha256: str
     triple: str
@@ -27,6 +28,7 @@ class ClangPgoLock:
     gcc_toolchain: Path
     abi: str
     cpu_model: str
+    port_flags: str
     profile_runtime_path: Path
     profile_runtime_sha256: str
     profile_runtime_commit: str
@@ -38,6 +40,13 @@ def _delivery():
     from . import delivery
 
     return delivery
+
+
+def locked_port_flags() -> str:
+    """Return the port flag set that reproduces the measured configuration."""
+    from .manifests import load_clang_pgo_lock
+
+    return load_clang_pgo_lock().port_flags
 
 
 def prepare_compiler(work_root: Path, evidence: Path) -> Path:
@@ -52,8 +61,11 @@ def prepare_compiler(work_root: Path, evidence: Path) -> Path:
     if delivery._sha256(lock.compiler_path) != lock.compiler_sha256:
         raise delivery.ContractError("locked clang executable SHA256 mismatch")
     version_line = delivery._run_command([str(lock.compiler_path), "--version"]).splitlines()[0]
-    if lock.package_version not in version_line:
-        raise delivery.ContractError("locked clang version mismatch")
+    if lock.version_token not in version_line:
+        raise delivery.ContractError(
+            f"locked clang version mismatch: {version_line} does not contain "
+            f"{lock.version_token}"
+        )
     if not lock.profile_runtime_path.is_file():
         raise delivery.ContractError(
             "riscv64 profile runtime is missing; build it from the locked "
@@ -97,6 +109,7 @@ def prepare_compiler(work_root: Path, evidence: Path) -> Path:
                 "gcc_toolchain": str(lock.gcc_toolchain),
                 "abi": lock.abi,
                 "cpu_model": lock.cpu_model,
+                "port_flags": lock.port_flags,
             },
             "profile_runtime": {
                 "path": str(lock.profile_runtime_path),
