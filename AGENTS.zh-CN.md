@@ -5,8 +5,9 @@
 本文件是 CoreMark 的项目级契约，用于收紧（绝不放宽）工作区根 `AGENTS.md` 与
 governance 文档中的协作契约，只记录 CoreMark 特有的内容。
 
-- 交叉编译默认使用工作区工具链 `spacemit-toolchain-linux-glibc-x86_64-v1.2.2/`
-  及其自带的 `sysroot/`。
+- 交叉编译默认使用工作区工具链 `spacemit-toolchain-linux-glibc-x86_64-v1.2.4/`
+  及其自带的 `sysroot/`，这也是根契约的要求。已记录一项例外，见下文的待裁决项：
+  封存的 `k3_x100_clang_23_pgo` 通道是基于 `v1.2.2` 的 sysroot 与 GCC 工具链构建的。
 - 固定版本的上游源码是本地检出 `src/coremark`，提交为
   `b56889a7bd9d5624fbeff2a73ba69878e6a9c146`，完整性命令为 `make check`，
   工作负载文件受 `coremark.md5` 控制。
@@ -28,3 +29,10 @@ governance 文档中的协作契约，只记录 CoreMark 特有的内容。
   等待批准；当前摘要为
   `484e181fffbfa493dceee66588ef79a05f1cb2bbe95a7452d537bcfca1667214` 与
   `36357713156c805b464642b4f07c4dbbcc12bc7298856bf3934d1ee3d9f5b8ec`。
+- **待重新裁决，需人工批准。** `environments.lock.yaml` 把
+  `k3_x100_clang_23_pgo` 的目标记录为
+  `spacemit-toolchain-linux-glibc-x86_64-v1.2.2`，`sysroot` 与 `gcc_toolchain`
+  两处都是。本项目其他通道都不再解析工作区工具链路径，因此它是仅存的 `v1.2.2`
+  使用者。封存的最佳可达结果（8.60 CoreMark/MHz）正是基于该 sysroot 产生的，
+  因此改指该通道会改变已记录结果的运行时身份，需等待批准并重新测量；在此之前
+  `v1.2.2` 目录必须保留。

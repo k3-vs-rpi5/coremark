@@ -7,7 +7,10 @@ This project-local contract narrows the workspace contract in the root
 what is specific to CoreMark.
 
 - Cross builds default to the workspace toolchain
-  `spacemit-toolchain-linux-glibc-x86_64-v1.2.2/` with its own `sysroot/`.
+  `spacemit-toolchain-linux-glibc-x86_64-v1.2.4/` with its own `sysroot/`, which
+  is what the root contract requires. One recorded exception is pending below:
+  the sealed `k3_x100_clang_23_pgo` lane was built against the `v1.2.2` sysroot
+  and GCC toolchain.
 - The pinned upstream source is the local checkout `src/coremark` at commit
   `b56889a7bd9d5624fbeff2a73ba69878e6a9c146`, integrity command `make check`,
   with `coremark.md5`-controlled workload files.
@@ -33,3 +36,11 @@ what is specific to CoreMark.
   approval; the current digests are
   `484e181fffbfa493dceee66588ef79a05f1cb2bbe95a7452d537bcfca1667214` and
   `36357713156c805b464642b4f07c4dbbcc12bc7298856bf3934d1ee3d9f5b8ec`.
+- **Pending re-adjudication, needs human approval.** `environments.lock.yaml`
+  records the `k3_x100_clang_23_pgo` target as
+  `spacemit-toolchain-linux-glibc-x86_64-v1.2.2`, for both `sysroot` and
+  `gcc_toolchain`. No other lane in this project resolves a workspace toolchain
+  path, so this is the last `v1.2.2` user left. The sealed best-achievable
+  result (8.60 CoreMark/MHz) was produced against that sysroot, so re-pointing
+  the lane changes the runtime identity of a recorded result and waits for
+  approval and a re-measure; the `v1.2.2` directory has to stay until then.
