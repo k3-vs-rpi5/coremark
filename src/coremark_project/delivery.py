@@ -621,8 +621,14 @@ def build_delivery(
     else:
         _validate_track_architecture(track)
     if work_root is None:
+        # No work root was named, so the temporary directory this creates IS the
+        # work root. It must not be pushed through _new_directory, which requires
+        # a path that does not exist yet - that check made the default form of
+        # `scripts/build.sh` fail with "must name a new path" for the directory
+        # it had just created a line earlier.
         work_root = Path(tempfile.mkdtemp(prefix="coremark-build-"))
-    work_root = _new_directory(work_root, "COREMARK_WORK_ROOT")
+    else:
+        work_root = _new_directory(work_root, "COREMARK_WORK_ROOT")
     evidence = work_root / "evidence"
     binaries = work_root / "bin"
     source_root = work_root / "source"
