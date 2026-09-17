@@ -20,3 +20,16 @@ what is specific to CoreMark.
 - Device delivery, execution, and analysis follow the governance workflow
   through the workspace credentials `.ssh-k3` and `.ssh-rpi`, and evidence is
   sealed outside every managed Git repository.
+- **Pending re-adjudication, needs human approval.** The `k3-compatible` and
+  `k3-development` runtime profiles pin a foundation profile digest that predates
+  foundation commit `306630b`, which corrected the operating frequency in
+  `config/runtime-profiles/k3-compatible-debian13.yaml` and
+  `config/runtime-profiles/k3-development-bianbu404.yaml` from `2200 MHz` to
+  `2000 MHz`. The lock still records the pre-fix digests
+  (`61c40d03e873625d3aa44fc8aa37642f96bbfce9d4334c3d8323cdcfa646f1a4` and
+  `62218ec3b29f5a1f33397393826270287d2c5e0fc1b96854f05d8a13d9d32328`), so the run
+  gate would accept a digest describing a platform declaration that no longer
+  exists. Updating the two pins is an environment-lock change and waits for
+  approval; the current digests are
+  `484e181fffbfa493dceee66588ef79a05f1cb2bbe95a7452d537bcfca1667214` and
+  `36357713156c805b464642b4f07c4dbbcc12bc7298856bf3934d1ee3d9f5b8ec`.
