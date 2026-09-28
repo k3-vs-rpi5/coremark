@@ -1,0 +1,56 @@
+schema_version: 2
+project: coremark
+upstream:
+  url: https://github.com/eembc/coremark.git
+  policy: official-suite-first
+source_lock: sources.lock.yaml
+environment_lock: environments.lock.yaml
+public_delivery:
+  build_script: scripts/build.sh
+  run_script: scripts/run.sh
+  public_shell_entrypoints: 2
+  evidence_policy: explicit-absolute-root-outside-project
+matrix:
+  tracks: [rpi-native, k3-compatible, k3-development]
+  result_modes: [default-parity, best-achievable]
+  rule: optimized results never replace equal-parameter default results
+protocol:
+  correctness_before_performance: true
+  minimum_duration_seconds: 10
+  warmup_samples: 3
+  formal_sessions: 3
+  formal_samples_per_session: 30
+  cpu_sets: [single-core, four-core]
+  storage_io: excluded-from-timing
+  required_metadata:
+    - source-and-patch-sha256
+    - compiler-linker-binutils-libc-versions-and-sha256
+    - complete-flags-and-target-abi
+    - runtime-profile-digest
+    - affinity-and-cpu-topology
+    - sampled-frequency-and-average-temperature
+    - memory-swap-storage-network-throttling-and-services
+    - official-crc-and-failure-state
+result_classes:
+  quick: functional-only-not-reportable
+  formal: reportable-after-independent-review
+  failed: retained-invalid-never-public
+optimization:
+  target_coremark_per_mhz: 7.7
+  cycle: hotspot-localization-to-falsifiable-hypothesis-to-validation-to-patch
+  official_score_changes: core_portme-star-only
+  workload_source_changes: diagnostic-only
+  accepted_patch_series: coremark-k3-x100
+tests:
+  policy: minimal-contract-only
+  command: PYTHONPATH=src python3 -m pytest tests -q
+  scope:
+    - public-entrypoint-and-evidence-boundary
+    - official-output-and-execution-order
+    - compatible-rootfs-isolation
+    - patch-and-toolchain-identity
+    - failed-run-sealing
+publication:
+  report_owner: separate-reports-repository
+  public_claim: false
+  blocker: independent-reproduction-and-review
